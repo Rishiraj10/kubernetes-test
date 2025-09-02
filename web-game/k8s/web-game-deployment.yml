@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-game
+  namespace: web-game
+  labels:
+    app: web-game
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-game
+  template:
+    metadata:
+      labels:
+        app: web-game
+    spec:
+      containers:
+      - name: web-game
+        image: rishiraj101/web-game
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kotlin Quest — Infinite Random Levels</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#181c2f; --muted:#8f9bb3; --text:#e7eaf6; --accent:#6aa2ff; --ok:#37d67a; --bad:#ff6b6b; --warn:#ffb020;
+      --code-bg:#0b0e1a; --border:#232745; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+      background:radial-gradient(1200px 600px at 20% -10%, rgba(106,162,255,.18), transparent 60%),
+                 radial-gradient(1000px 500px at 120% 10%, rgba(255,107,107,.12), transparent 60%),
+                 var(--bg);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{ width:min(1100px,100%); }
+
+    .topbar{ display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:18px;}
+    .brand{ display:flex; gap:12px; align-items:center;}
+    .brand h1{ font-size:20px; margin:0; letter-spacing:.4px; }
+    .pill{ border:1px solid var(--border); background:rgba(255,255,255,.02); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted)}
+
+    .grid{ display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; }
+    @media (max-width: 880px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{ background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); }
+    .card .head{ padding:16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .card .head h2{ margin:0; font-size:16px; font-weight:600; color:#dfe7ff }
+    .card .body{ padding:18px; }
+
+    .stats{ display:flex; gap:10px; flex-wrap:wrap }
+    .stat{ background:rgba(255,255,255,.02); border:1px dashed var(--border); padding:8px 10px; border-radius:12px; font-size:12px; color:var(--muted) }
+
+    .code{ background:var(--code-bg); border:1px solid var(--border); border-radius:14px; padding:14px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:14px; line-height:1.6; position:relative; }
+    .code .k{ color:#8ab4ff }
+    .code .t{ color:#ffd580 }
+    .code .fn{ color:#80e6b8 }
+    .code .c{ color:#64748b }
+    .code .n{ color:#e7eaf6 }
+    .gap{ display:inline-block; min-width:80px; padding:2px 6px; border-bottom:2px dashed #3a3f6b; border-radius:6px; background:rgba(106,162,255,.08) }
+
+    .choices{ display:grid; gap:10px; margin-top:14px; }
+    .choice{ text-align:left; width:100%; border:1px solid var(--border); background:rgba(255,255,255,.02); border-radius:12px; padding:12px 14px; color:var(--text); cursor:pointer; transition:.15s transform ease, .15s border-color ease; }
+    .choice:hover{ transform:translateY(-1px); border-color:#33407a }
+    .choice.correct{ border-color:rgba(55,214,122,.6); background:linear-gradient(180deg, rgba(55,214,122,.08), transparent); }
+    .choice.wrong{ border-color:rgba(255,107,107,.6); background:linear-gradient(180deg, rgba(255,107,107,.08), transparent); }
+
+    .explain{ font-size:13px; color:#cbd5e1; background:rgba(255,255,255,.02); border:1px solid var(--border); padding:12px 14px; border-radius:12px; margin-top:12px; display:none }
+    .explain.show{ display:block }
+
+    .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px }
+    button{ border:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); color:var(--text); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; box-shadow:var(--shadow) }
+    button.primary{ border-color:#3a6ee8; background:linear-gradient(180deg, rgba(106,162,255,.18), rgba(106,162,255,.06)); }
+    button.ghost{ background:transparent }
+
+    .progress{ height:8px; background:#121527; border:1px solid var(--border); border-radius:999px; overflow:hidden }
+    .progress > div{ height:100%; width:0%; background:linear-gradient(90deg, var(--accent), #9b7bff); transition:width .3s ease }
+
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+    .hint{ font-size:12px; color:var(--muted) }
+    .badge{ padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:999px; color:#d4d9f5 }
+    .badge.warn{ color:#ffe7b0; border-color:#6a5b2e; background:rgba(255,176,32,.08) }
+
+    .footer{ text-align:center; color:var(--muted); font-size:12px; margin-top:14px }
+    a.link{ color:#bcd3ff }
+    .toggle{ display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted) }
+    input[type="checkbox"]{ width:38px; height:22px; appearance:none; background:#11152a; border:1px solid var(--border); border-radius:999px; position:relative; outline:none; cursor:pointer }
+    input[type="checkbox"]:checked{ background:#1d2b55 }
+    input[type="checkbox"]::after{ content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#e7eaf6; border-radius:50%; transition:left .15s ease }
+    input[type="checkbox"]:checked::after{ left:18px }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 3h18v6l-6 6 6 6H3V3z" fill="#6aa2ff" opacity=".25"/>
+          <path d="M21 9V3l-9 9 9 9v-6l-6-6 6-6z" fill="#6aa2ff"/>
+        </svg>
+        <h1>Kotlin Quest</h1>
+        <span class="pill">Infinite random levels</span>
+      </div>
+      <div class="row">
+        <div class="toggle"><label for="speed">Speed Mode</label> <input id="speed" type="checkbox"/></div>
+        <button id="reset" class="ghost" title="Reset progress">Reset</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="head">
+          <h2 id="title">Level 1 • Kotlin Basics</h2>
+          <div class="stats">
+            <div class="stat">Score: <b id="score">0</b></div>
+            <div class="stat">Streak: <b id="streak">0</b></div>
+            <div class="stat">Best: <b id="best">0</b></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="progress"><div id="bar"></div></div>
+          <div class="hint" id="goal" style="margin-top:8px">Pick the correct Kotlin snippet.</div>
+
+          <pre class="code" id="snippet" aria-live="polite"></pre>
+          <div class="choices" id="choices"></div>
+          <div id="explain" class="explain" role="note"></div>
+
+          <div class="controls">
+            <button id="next" class="primary">Next Challenge ⟶</button>
+            <span class="badge" id="difficulty">Easy</span>
+          </div>
+
+          <div class="footer">Made for learning Kotlin syntax fast. Levels are procedurally generated — no repeats!
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="head"><h2>Rules & Tips</h2><span class="badge warn">Pro Tip</span></div>
+        <div class="body">
+          <ul>
+            <li>Each level is random from smart templates (vars, functions, null-safety, ranges, collections, <code>when</code>, and more).</li>
+            <li>Choose the correct code to satisfy the prompt. Hover options to preview; click to lock your answer.</li>
+            <li>Speed Mode adds a timer. Chain correct answers to grow your streak multiplier.</li>
+            <li>Progress auto-saves to your browser. Use <b>Reset</b> to start fresh.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Utilities ---------------------------------------------------------
+    const rand = (n)=>Math.floor(Math.random()*n);
+    const choice = (arr)=>arr[rand(arr.length)];
+    const shuffle = (arr)=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(v=>v[1]);
+    const cap = s=>s[0].toUpperCase()+s.slice(1);
+
+    const nouns = ["cat","user","item","score","count","age","price","name","total","flag","index","num","height","width","time","speed","level"];
+    const types = ["Int","String","Boolean","Double","Long"];
+
+    function randIdent(){
+      const n = choice(nouns);
+      const suffix = Math.random()<0.3 ? rand(100) : "";
+      return (Math.random()<0.15?"_":"") + n + suffix;
+    }
+
+    // Render helper for code with tiny token coloring
+    function codeSpan(parts){
+      return parts.map(([cls,txt])=>`<span class="${cls}">${txt}</span>`).join("");
+    }
+
+    // --- Template Generators (return a challenge object) -------------------
+    // Challenge: { title, goal, difficulty, code, options:[{text,isCorrect}], explanation }
+
+    function genValVar(){
+      const id = randIdent();
+      const t = choice(["Int","String","Boolean"]);
+      const isVal = Math.random()<0.5;
+      const correct = `${isVal?"val":"var"} ${id}: ${t}` + (t==="String"?" = \"Kotlin\"":" = 0");
+      const wrong1 = `${isVal?"var":"val"} ${id}: ${t}` + (t==="String"?" = \"Kotlin\"":" = 0");
+      const wrong2 = `${isVal?"val":"var"} ${id} ${t}`; // missing colon
+      const wrong3 = `${isVal?"val":"var"} ${id}: ${t}? = null`;
+      const goal = `Declare a ${isVal?"read-only":"mutable"} <code>${t}</code> named <code>${id}</code>.`;
+      return {
+        title: "Kotlin Basics",
+        goal,
+        difficulty: "Easy",
+        code: codeSpan([["k","// pick the correct declaration\n"]]),
+        options: shuffle([
+          {text: correct, isCorrect:true},
+          {text: wrong1, isCorrect:false},
+          {text: wrong2, isCorrect:false},
+          {text: wrong3, isCorrect:false},
+        ]),
+        explanation: `Use <code>val</code> for read‑only, <code>var</code> for mutable. Type after colon. Nullable needs <code>?</code> only if null required.`
+      }
+    }
+
+    function genStringInterp(){
+      const who = cap(choice(["kotlin","world","dev","friend"]))
+      const id = randIdent();
+      const correct = `val ${id} = "Hello, ${'${'}${who.toLowerCase()}${'}'}!"`;
+      const wrong1 = `val ${id} = "Hello, $${who.toLowerCase()}!"`; // invalid since not identifier
+      const wrong2 = `val ${id} = 'Hello, ${who}!'`; // single quotes
+      const wrong3 = `val ${id} = "Hello, \${who}!"`; // escaped
+      const goal = `Create a string with interpolation that says <code>Hello, ${who}!</code>.`;
+      return {
+        title: "String Templates",
+        goal,
+        difficulty: "Easy",
+        code: codeSpan([["k","// build the string using Kotlin string templates\n"]]),
+        options: shuffle([
+          {text: correct, isCorrect:true},
+          {text: wrong1, isCorrect:false},
+          {text: wrong2, isCorrect:false},
+          {text: wrong3, isCorrect:false},
+        ]),
+        explanation: `String templates use <code>$name</code> or <code>${'${'}expr${'}'}</code>. Kotlin uses double quotes for strings.`
+      }
+    }
+
+    function genWhen(){
+      const id = randIdent();
+      const correct = `val mood = when (${id}) {\n    in 1..3 -> "low"\n    4,5 -> "mid"\n    else -> "high"\n}`;
+      const wrong1 = `when (${id}) { 1..3: "low"; 4,5: "mid"; else: "high" }`;
+      const wrong2 = `val mood = when ${id} { 1..3 -> "low" else -> "high" }`;
+      const wrong3 = `val mood = when (${id}) { 1..3 => "low"; else -> "high" }`;
+      const goal = `Use <code>when</code> to map ${id} to a string using ranges and <code>else</code>.`;
+      return {
+        title: "Control Flow: when",
+        goal,
+        difficulty: "Medium",
+        code: codeSpan([["k","// complete a when expression\n"]]),
+        options: shuffle([
+          {text: correct, isCorrect:true},
+          {text: wrong1, isCorrect:false},
+          {text: wrong2, isCorrect:false},
+          {text: wrong3, isCorrect:false},
+        ]),
+        explanation: `In <code>when</code> use <code>-></code> arrows and commas for multiple constants; ranges use <code>in a..b</code>.`}
+    }
+
+    function genNullSafety(){
+      const id = randIdent();
+      const correct = `val len = ${id}?.length ?: 0`;
+      const wrong1 = `val len = ${id}.length ?: 0`;
+      const wrong2 = `val len = ${id}? .length ?: 0`;
+      const wrong3 = `val len = ${id}?.length ? 0 : -1`;
+      const goal = `Safely get <code>${id}.length</code> or 0 using safe-call and Elvis.`;
+      return {
+        title: "Null Safety",
+        goal,
+        difficulty: "Medium",
+        code: codeSpan([["k","// avoid NPE with ?. and ?: \n"]]),
+        options: shuffle([
+          {text: correct, isCorrect:true},
+          {text: wrong1, isCorrect:false},
+          {text: wrong2, isCorrect:false},
+          {text: wrong3, isCorrect:false},
+        ]),
+        explanation: `Use <code>?.</code> to safe-call on nullable and <code>?:</code> (Elvis) to provide a default.`
+      }
+    }
+
+    function genFunc(){
+      const fn = randIdent();
+      const param = randIdent();
+      const t = choice(["Int","Double","String"]);
+      const ret = choice(["Int","String","Boolean"]);
+      const correct = `fun ${fn}(${param}: ${t}): ${ret} {\n    return TODO()\n}`;
+      const wrong1 = `fun ${fn}(${param} ${t}): ${ret} { return TODO() }`;
+      const wrong2 = `${ret} fun ${fn}(${param}: ${t}) { return TODO() }`;
+      const wrong3 = `fun ${fn}(${param}: ${t}) => ${ret}`;
+      const goal = `Declare a Kotlin function <code>${fn}(${param}: ${t})</code> returning <code>${ret}</code>.`;
+      return { title: "Functions", goal, difficulty:"Medium",
+        code: codeSpan([["k","// function signature syntax\n"]]),
+        options: shuffle([
+          {text: correct,isCorrect:true},{text: wrong1,isCorrect:false},{text: wrong2,isCorrect:false},{text: wrong3,isCorrect:false}
+        ]),
+        explanation: `Function: <code>fun name(params): ReturnType { ... }</code>. Type after colon; no fat‑arrow in block form.` }
+    }
+
+    function genCollections(){
+      const id = randIdent();
+      const n1 = rand(10), n2 = n1+1, n3 = n2+1;
+      const correct = `val ${id} = listOf(${n1}, ${n2}, ${n3})`;
+      const wrong1 = `val ${id}: List = [${n1}, ${n2}, ${n3}]`;
+      const wrong2 = `var ${id} = arrayOf${n1}, ${n2}, ${n3}`;
+      const wrong3 = `val ${id} = List(${n3}) { it }`;
+      const goal = `Create an immutable list with three ints: ${n1}, ${n2}, ${n3}.`;
+      return { title:"Collections", goal, difficulty:"Easy",
+        code: codeSpan([["k","// choose the idiomatic list creation\n"]]),
+        options: shuffle([
+          {text:correct,isCorrect:true},{text:wrong1,isCorrect:false},{text:wrong2,isCorrect:false},{text:wrong3,isCorrect:false}
+        ]),
+        explanation:`Use <code>listOf()</code> for immutable lists. Square brackets aren't used in Kotlin.` }
+    }
+
+    function genForRange(){
+      const id = randIdent();
+      const correct = `for (i in 1..5) println(i)`;
+      const wrong1 = `for (i = 1 to 5) print(i)`;
+      const wrong2 = `for i in 1..5 { println(i) }`;
+      const wrong3 = `for (1..5 as i) println(i)`;
+      const goal = `Loop from 1 to 5 inclusive printing each number.`;
+      return { title:"Loops & Ranges", goal, difficulty:"Easy",
+        code: codeSpan([["k","// ranges use .. and in\n"]]),
+        options: shuffle([
+          {text:correct,isCorrect:true},{text:wrong1,isCorrect:false},{text:wrong2,isCorrect:false},{text:wrong3,isCorrect:false}
+        ]),
+        explanation:`Ranges are <code>a..b</code> and used with <code>in</code> inside <code>for</code>.` }
+    }
+
+    const GENERATORS = [
+      genValVar, genStringInterp, genCollections, genForRange, genNullSafety, genWhen, genFunc
+    ];
+
+    // --- Game State --------------------------------------------------------
+    const state = {
+      level: 1, score: 0, streak: 0, best: 0,
+      speed: false, timerMax: 18, timer: 0,
+      locked: false,
+    };
+
+    const el = (id)=>document.getElementById(id);
+    const ui = {
+      title: el('title'), score: el('score'), streak: el('streak'), best: el('best'),
+      goal: el('goal'), snippet: el('snippet'), choices: el('choices'),
+      next: el('next'), explain: el('explain'), bar: el('bar'), diff: el('difficulty'),
+      reset: el('reset'), speed: el('speed')
+    };
+
+    function load(){
+      try{ const saved = JSON.parse(localStorage.getItem('kotlinQuestSave')||'null');
+        if(saved){ Object.assign(state, saved); }
+      }catch{}
+      ui.speed.checked = state.speed;
+      renderStats();
+      newChallenge();
+    }
+
+    function save(){
+      localStorage.setItem('kotlinQuestSave', JSON.stringify({
+        level: state.level, score: state.score, streak: state.streak, best: Math.max(state.best, state.score), speed: state.speed
+      }));
+    }
+
+    // difficulty label from level
+    function difficultyOf(level){
+      if(level<5) return 'Easy';
+      if(level<12) return 'Medium';
+      return 'Hard';
+    }
+
+    let current = null; // current challenge
+    function newChallenge(){
+      state.locked = false;
+      ui.explain.classList.remove('show');
+      ui.explain.innerHTML = '';
+      const gen = choice(GENERATORS);
+      current = gen();
+      // Scale difficulty label by level, but keep template title
+      ui.title.textContent = `Level ${state.level} • ${current.title}`;
+      ui.goal.innerHTML = current.goal;
+      ui.diff.textContent = difficultyOf(state.level);
+
+      // Render code (some tasks show only hint/comment)
+      ui.snippet.innerHTML = current.code;
+
+      // Render options
+      ui.choices.innerHTML = '';
+      current.options.forEach((opt,i)=>{
+        const btn = document.createElement('button');
+        btn.className = 'choice';
+        btn.innerHTML = `<code>${opt.text.replaceAll('<','&lt;')}</code>`;
+        btn.addEventListener('click', ()=>select(i, btn));
+        ui.choices.appendChild(btn);
+      });
+
+      // Timer for speed mode
+      state.timer = state.speed ? Math.max(8, 18 - Math.floor(state.level/3)) : 0;
+      updateBar();
+    }
+
+    function renderStats(){
+      ui.score.textContent = state.score;
+      ui.streak.textContent = state.streak;
+      ui.best.textContent = Math.max(state.best, state.score);
+    }
+
+    function select(i, btn){
+      if(state.locked) return;
+      state.locked = true;
+      const correctIndex = current.options.findIndex(o=>o.isCorrect);
+      const children = Array.from(ui.choices.children);
+      children.forEach((b,idx)=>{
+        b.classList.add(idx===correctIndex?'correct':'wrong');
+        if(idx!==correctIndex) b.style.opacity = .7;
+      });
+
+      const ok = i===correctIndex;
+      if(ok){
+        const base = 100 + Math.floor(state.level*3);
+        const bonus = Math.min(5, state.streak) * 20;
+        const speedBonus = state.speed? Math.floor((state.timer||0)*5) : 0;
+        state.score += base + bonus + speedBonus;
+        state.streak += 1;
+        state.level += 1;
+        ui.explain.innerHTML = `<b style="color:var(--ok)">Correct!</b> ${current.explanation}`;
+      } else {
+        state.streak = 0;
+        state.level = Math.max(1, state.level-1);
+        ui.explain.innerHTML = `<b style="color:var(--bad)">Not quite.</b> ${current.explanation}`;
+      }
+      ui.explain.classList.add('show');
+      state.best = Math.max(state.best, state.score);
+      renderStats();
+      save();
+    }
+
+    // Next button
+    ui.next.addEventListener('click', ()=> newChallenge());
+
+    // Speed mode toggle
+    ui.speed.addEventListener('change', ()=>{ state.speed = ui.speed.checked; save(); newChallenge(); });
+
+    // Reset progress
+    ui.reset.addEventListener('click', ()=>{
+      if(confirm('Reset score, streak, and level?')){
+        state.level = 1; state.score = 0; state.streak = 0; save(); newChallenge(); renderStats();
+      }
+    });
+
+    // Timer tick (speed mode)
+    setInterval(()=>{
+      if(!state.speed || state.locked) return;
+      if(state.timer>0){ state.timer -= 1; updateBar(); }
+      else if(state.timer===0){ // time out triggers a miss
+        state.timer = -1;
+        // auto reveal as wrong (select any wrong index for visuals)
+        const wrongIdx = current.options.findIndex(o=>!o.isCorrect);
+        const btn = ui.choices.children[wrongIdx];
+        select(wrongIdx, btn);
+      }
+    }, 1000);
+
+    function updateBar(){
+      if(!state.speed){ ui.bar.style.width = '0%'; return; }
+      const max = Math.max(8, 18 - Math.floor(state.level/3));
+      const pct = Math.max(0, Math.min(100, Math.floor((state.timer/max)*100)));
+      ui.bar.style.width = pct + '%';
+    }
+
+    // Init
+    load();
+  </script>
+</body>
+</html>
